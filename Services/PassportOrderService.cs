@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Amazon.DynamoDBv2.Model;
+using Amazon.Runtime.Internal.Transform;
 using EasyPassportImage.Enums;
 using EasyPassportImage.Interfaces;
 using EasyPassportImage.Models;
@@ -9,6 +11,9 @@ public class PassportOrderService : IPassportOrderService
     public readonly IDynamoDbService<Order> _service;
     private readonly IS3BucketService _s3BucketService;
     public PassportOrderService(IDynamoDbService<Order> service, IS3BucketService s3BucketService)
+    private readonly string tablename = "OrderDetail";
+    public PassportOrderService(IDynamoDbService<Order> service)
+
     {
         _s3BucketService = s3BucketService;
         _service = service;
@@ -19,7 +24,6 @@ public class PassportOrderService : IPassportOrderService
         try
         {
             var imageUrl = await _s3BucketService.UploadImageAsync(passport.Image);
-
             var order = new Order
             {
                 Id = Guid.NewGuid().ToString(),
@@ -29,8 +33,16 @@ public class PassportOrderService : IPassportOrderService
                 ImageUrl = imageUrl,
                 State = State.Placed
             };
+            var orderInfo = new Dictionary<string, AttributeValue>
+            {
+                {"OrderId",new AttributeValue{S=order.Id} },
+                {"OrderDate",new AttributeValue{S=Convert.ToString(order.OrderDate)} },
+                {"DeliveryDate",new AttributeValue{S=Convert.ToString(order.DeliveryDate)} },
+                {"ImageUrl" ,new AttributeValue{S=order.ImageUrl} },
+                {"State",new AttributeValue{S=order.State.ToString()} },
+            };
 
-            var result = await _service.SaveItemAsync(order);
+            var result = await _service.SaveItemAsync(orderInfo,tablename);
 
             if (!result) return Results.Json("Internal server error",
                 statusCode: StatusCodes.Status500InternalServerError);
