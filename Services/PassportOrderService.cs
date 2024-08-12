@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Amazon.DynamoDBv2.Model;
+using Amazon.Runtime.Internal.Transform;
 using EasyPassportImage.Enums;
 using EasyPassportImage.Interfaces;
 using EasyPassportImage.Models;
@@ -7,6 +9,7 @@ namespace EasyPassportImage.Services;
 public class PassportOrderService : IPassportOrderService
 {
     public readonly IDynamoDbService<Order> _service;
+    private readonly string tablename = "OrderDetail";
     public PassportOrderService(IDynamoDbService<Order> service)
     {
         _service = service;
@@ -16,7 +19,6 @@ public class PassportOrderService : IPassportOrderService
     {
         try
         {
-            // ToDo: Save passport.Image to S3 and get the url and assign it to imageUrl
             var imageUrl = "https://pixy.org/src/31/315160.png";
 
             var order = new Order {
@@ -27,8 +29,16 @@ public class PassportOrderService : IPassportOrderService
                 ImageUrl = imageUrl,
                 State = State.Placed
             };
+            var orderInfo = new Dictionary<string, AttributeValue>
+            {
+                {"OrderId",new AttributeValue{S=order.Id} },
+                {"OrderDate",new AttributeValue{S=Convert.ToString(order.OrderDate)} },
+                {"DeliveryDate",new AttributeValue{S=Convert.ToString(order.DeliveryDate)} },
+                {"ImageUrl" ,new AttributeValue{S=order.ImageUrl} },
+                {"State",new AttributeValue{S=order.State.ToString()} },
+            };
 
-            var result = await _service.SaveItemAsync(order);
+            var result = await _service.SaveItemAsync(orderInfo,tablename);
 
             if(!result) return Results.Json("Internal server error",
                 statusCode: StatusCodes.Status500InternalServerError);
