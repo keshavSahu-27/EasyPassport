@@ -10,9 +10,8 @@ public class PassportOrderService : IPassportOrderService
 {
     public readonly IDynamoDbService<Order> _service;
     private readonly IS3BucketService _s3BucketService;
-    public PassportOrderService(IDynamoDbService<Order> service, IS3BucketService s3BucketService)
     private readonly string tablename = "OrderDetail";
-    public PassportOrderService(IDynamoDbService<Order> service)
+    public PassportOrderService(IDynamoDbService<Order> service, IS3BucketService s3BucketService)
 
     {
         _s3BucketService = s3BucketService;
