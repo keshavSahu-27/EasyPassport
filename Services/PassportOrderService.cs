@@ -9,9 +9,13 @@ namespace EasyPassportImage.Services;
 public class PassportOrderService : IPassportOrderService
 {
     public readonly IDynamoDbService<Order> _service;
+    private readonly IS3BucketService _s3BucketService;
+    public PassportOrderService(IDynamoDbService<Order> service, IS3BucketService s3BucketService)
     private readonly string tablename = "OrderDetail";
     public PassportOrderService(IDynamoDbService<Order> service)
+
     {
+        _s3BucketService = s3BucketService;
         _service = service;
     }
 
@@ -19,9 +23,9 @@ public class PassportOrderService : IPassportOrderService
     {
         try
         {
-            var imageUrl = "https://pixy.org/src/31/315160.png";
-
-            var order = new Order {
+            var imageUrl = await _s3BucketService.UploadImageAsync(passport.Image);
+            var order = new Order
+            {
                 Id = Guid.NewGuid().ToString(),
                 CustomerName = passport.CustomerName,
                 DeliveryDate = DateTime.Now.AddDays(5),
@@ -40,7 +44,7 @@ public class PassportOrderService : IPassportOrderService
 
             var result = await _service.SaveItemAsync(orderInfo,tablename);
 
-            if(!result) return Results.Json("Internal server error",
+            if (!result) return Results.Json("Internal server error",
                 statusCode: StatusCodes.Status500InternalServerError);
 
             return Results.Ok("Success");
@@ -48,7 +52,7 @@ public class PassportOrderService : IPassportOrderService
         catch (Exception ex)
         {
             Debug.WriteLine("Error Occured", ex);
-            return Results.Json("Internal server error", 
+            return Results.Json("Internal server error",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
     }
@@ -59,10 +63,10 @@ public class PassportOrderService : IPassportOrderService
         {
             var result = await _service.GetItemAsync(id);
 
-            if(result is null) return Results.Json("Internal server error", 
+            if (result is null) return Results.Json("Internal server error",
                 statusCode: StatusCodes.Status500InternalServerError);
 
-            result.Id =  Guid.NewGuid().ToString();
+            result.Id = Guid.NewGuid().ToString();
             result.DeliveryDate = DateTime.Now.AddDays(5);
             result.CustomerName = "AWS POC";
             result.OrderDate = DateTime.Now;
@@ -73,7 +77,7 @@ public class PassportOrderService : IPassportOrderService
         catch (Exception ex)
         {
             Debug.WriteLine("Error Occured", ex);
-            return Results.Json("Internal server error", 
+            return Results.Json("Internal server error",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
     }
